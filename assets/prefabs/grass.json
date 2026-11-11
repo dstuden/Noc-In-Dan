@@ -1,0 +1,10 @@
+{
+    "size": [1.0, 0.85],
+    "color": [0.40, 0.62, 0.28, 1.0],
+    "texturePath": "",
+    "hasCollider": false,
+    "colliderRadius": 0.2,
+    "shadow": "upright",
+    "contactShadowRadius": 0.25,
+    "colliderHalfHeight": 0.5
+}

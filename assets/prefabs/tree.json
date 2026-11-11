@@ -1,0 +1,10 @@
+{
+  "size": [2.2, 3.4],
+  "color": [1.0, 1.0, 1.0, 1.0],
+  "texturePath": "assets/prefabs/evergreen.png",
+  "hasCollider": true,
+  "colliderRadius": 0.4,
+  "shadow": "upright",
+  "contactShadowRadius": 0.25,
+  "colliderHalfHeight": 1.0
+}
