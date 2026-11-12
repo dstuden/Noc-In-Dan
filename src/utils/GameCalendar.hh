@@ -147,11 +147,12 @@ namespace NocInDan
             float           phaseT = 0.0f;
             const DayPhase  phase  = phaseAt( p_timeOfDay, segs, &phaseT );
 
-            const SeasonSun& sun    = g_kSeasonSun[ static_cast<int>( p_season ) ];
-            const float      litEnd = static_cast<float>( segs.m_day + segs.m_dusk ) / static_cast<float>( g_kSegsPerDay );
-            const float      litT   = ( litEnd > 1e-6f ) ? std::clamp( p_timeOfDay / litEnd, 0.0f, 1.0f ) : 1.0f;
-            const float      theta  = litT * glm::pi<float>();
-            const float      rise   = std::sin( theta );
+            const SeasonSun& sun = g_kSeasonSun[ static_cast<int>( p_season ) ];
+
+            const float litEnd = static_cast<float>( segs.m_day + segs.m_dusk ) / static_cast<float>( g_kSegsPerDay );
+            const float litT   = ( litEnd > 1e-6f ) ? std::clamp( p_timeOfDay / litEnd, 0.0f, 1.0f ) : 1.0f;
+            const float theta  = litT * glm::pi<float>();
+            const float rise   = std::sin( theta );
 
             const float noonY = std::tan( sun.m_maxElevation );
             const float noonZ = std::tan( sun.m_noonDeclination );
@@ -164,23 +165,40 @@ namespace NocInDan
             const float     horizonI    = sun.m_duskIntensity * 0.30f;
             constexpr float kNightFloor = 0.02f;
 
+            const glm::vec3 horizonColor = glm::mix( sun.m_duskColor, sun.m_dayColor, 0.25f );
+            const glm::vec3 nightColor   = sun.m_duskColor * 0.55f;
+
             SunLook look;
-            look.m_phase   = phase;
-            float darkness = 0.0f;  // 0 = day, 1 = night
+            look.m_phase      = phase;
+            look.m_castShadow = true;  // always on -> no shadow pop at dawn/dusk
 
             if ( phase == DayPhase::Night )
             {
-                darkness         = 1.0f;
                 look.m_direction = glm::normalize( -nightArc );
-                look.m_color     = glm::mix( sun.m_duskColor, sun.m_duskColor * 0.55f, dip );
+                look.m_color     = glm::mix( horizonColor, nightColor, dip );
                 look.m_intensity = glm::mix( horizonI, kNightFloor, dip );
             }
             else
             {
-                if ( phase == DayPhase::Dusk ) darkness = phaseT;
                 look.m_direction = glm::normalize( -sunArc );
-                look.m_color     = glm::mix( sun.m_duskColor, sun.m_dayColor, 0.25f + 0.75f * rise );
-                look.m_intensity = horizonI + ( sun.m_dayIntensity - horizonI ) * rise;
+                look.m_color     = glm::mix( horizonColor, sun.m_dayColor, rise );
+                look.m_intensity = glm::mix( horizonI, sun.m_dayIntensity, rise );
+            }
+
+            float darkness = 0.0f;
+            if ( phase == DayPhase::Dusk )
+            {
+                darkness = phaseT;
+            }
+            else if ( phase == DayPhase::Night )
+            {
+                darkness = 1.0f;
+            }
+            else  // DayPhase::Day
+            {
+                constexpr float kDawnFadeSeconds = 20.0f;
+                const float dawnFrac = std::clamp( kDawnFadeSeconds / ( g_kDaySeconds * ( static_cast<float>( segs.m_day ) / g_kSegsPerDay ) ), 0.01f, 0.5f );
+                darkness             = 1.0f - glm::smoothstep( 0.0f, dawnFrac, phaseT );
             }
 
             applyMood( look, p_season, darkness );
@@ -214,8 +232,8 @@ namespace NocInDan
         // Blend Day -> Dusk -> Night on one continuous darkness value.
         static void applyMood( SunLook& p_look, Season p_season, float p_darkness )
         {
-            // Smoothstep, then Day -> Dusk over the first half and Dusk -> Night over the second.
-            const float t = glm::smoothstep( 0.0f, 1.0f, std::clamp( p_darkness, 0.0f, 1.0f ) );
+            const float d = std::clamp( p_darkness, 0.0f, 1.0f );
+            const float t = glm::smoothstep( 0.0f, 1.0f, d );
 
             const Mood* from;
             const Mood* to;

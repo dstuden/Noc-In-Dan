@@ -34,6 +34,7 @@ namespace NocInDan
         void createPlayer();
         void createWorld();
         void createLight();
+        void createCampfire();
         void spawnMobs();
     };
 }  // namespace NocInDan

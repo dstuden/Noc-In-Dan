@@ -38,6 +38,8 @@ add_executable(NocInDan
 	src/components/TiltedCameraComponent.hh
 	src/scripts/SunOrbitScript.cc
 	src/scripts/SunOrbitScript.hh
+	src/scripts/CampfireScript.cc
+	src/scripts/CampfireScript.hh
 	src/RegisterGameTypes.cc
 	src/RegisterGameTypes.hh
 	src/utils/Biome.hh

@@ -4,6 +4,7 @@
 #include "Tomos/systems/script/TScriptRegistry.hh"
 #include "Tomos/util/reflect/TReflectComponent.hh"
 #include "components/TiltedCameraComponent.hh"
+#include "scripts/CampfireScript.hh"
 #include "scripts/MobScript.hh"
 #include "scripts/PlayerScript.hh"
 #include "scripts/SunOrbitScript.hh"
@@ -22,5 +23,6 @@ namespace NocInDan
         scripts.registerType<MobScript>( "Mob" );
         scripts.registerType<WorldScript>( "World" );
         scripts.registerType<SunOrbitScript>( "SunOrbit" );
+        scripts.registerType<CampfireScript>( "Campfire" );
     }
 }  // namespace NocInDan

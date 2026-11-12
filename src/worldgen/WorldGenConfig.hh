@@ -28,7 +28,7 @@ namespace NocInDan
         // Region centers to plant. Raised to at least one per land biome in m_biomes.
         int m_regionCount = 8;
 
-        Cells m_playerClearRadius{ 3 };
+        Cells m_playerClearRadius{ 0 };
 
         // Authored against kSpawnBudgetReferenceArea; scaled by land area at generate time.
         int m_maxResources = 6000;

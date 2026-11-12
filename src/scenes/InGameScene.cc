@@ -5,19 +5,28 @@
 
 #include "../components/TiltedCameraComponent.hh"
 #include "../physics/StaticObstacle.hh"
+#include "../scripts/CampfireScript.hh"
 #include "../scripts/MobScript.hh"
 #include "../scripts/PlayerScript.hh"
 #include "../scripts/SunOrbitScript.hh"
 #include "../scripts/WorldScript.hh"
 #include "Tomos/core/app/TApplication.hh"
+#include "Tomos/gpu/TBillboardMode.hh"
+#include "Tomos/gpu/TGpuEnums.hh"
+#include "Tomos/gpu/TSpriteAlphaMode.hh"
+#include "Tomos/gpu/TSpriteShadowMode.hh"
+#include "Tomos/gpu/vulkan/TVkGpu.hh"
 #include "Tomos/gpu/vulkan/TVkMaterial.hh"
 #include "Tomos/systems/asset/TAssetSystem.hh"
 #include "Tomos/systems/light/TLightComponent.hh"
 #include "Tomos/systems/mesh/TMeshComponent.hh"
 #include "Tomos/systems/mesh/TMeshPrimitives.hh"
+#include "Tomos/systems/particle/TParticleEmitterComponent.hh"
+#include "Tomos/systems/physics/TColliderComponent.hh"
 #include "Tomos/systems/physics/TPhysicsLayers.hh"
 #include "Tomos/systems/post/TColorGradeComponent.hh"
 #include "Tomos/systems/script/TScriptComponent.hh"
+#include "Tomos/systems/sprite/TSpriteComponent.hh"
 #include "Tomos/systems/spriterig/TSpriteRigComponent.hh"
 #include "Tomos/util/random/TRandom.hh"
 
@@ -37,6 +46,7 @@ namespace NocInDan
     {
         createPlayer();
         createWorld();
+        createCampfire();
         spawnMobs();
         createLight();
     }
@@ -83,6 +93,96 @@ namespace NocInDan
 
         const WorldMap& map = *worldMap();
         m_player->node().m_transform.setTranslation( { map.cellWorldX( map.m_playerSpawnX ), 2.0f, map.cellWorldZ( map.m_playerSpawnY ) } );
+    }
+
+    void InGameScene::createCampfire()
+    {
+        constexpr const char* kSheet       = "assets/prefabs/campfire.png";
+        constexpr int         kSheetFrames = 6;
+
+        auto&           app   = Tomos::TApplication::get();
+        const WorldMap& map   = *worldMap();
+        const glm::vec3 spawn = m_player->node().m_transform.translation();
+
+        constexpr glm::vec2 kOffsets[] = { { 2.5f, 1.5f }, { -2.5f, 1.5f }, { 2.5f, -1.5f }, { -2.5f, -1.5f }, { 0.0f, 3.0f } };
+        glm::vec3           pos{ spawn.x + kOffsets[ 0 ].x, 0.0f, spawn.z + kOffsets[ 0 ].y };
+        for ( const glm::vec2& o : kOffsets )
+        {
+            if ( !map.isPassableAtPoint( spawn.x + o.x, spawn.z + o.y ) ) continue;
+            pos = { spawn.x + o.x, 0.0f, spawn.z + o.y };
+            break;
+        }
+
+        Tomos::TSceneNode& fire = createNode( "Campfire" );
+        addChild( &fire );
+        fire.m_transform.setTranslation( pos );
+
+        auto& col        = fire.emplaceComponent<Tomos::TColliderComponent>();
+        col.m_shape      = Tomos::TColliderShape::Cylinder;
+        col.m_radius     = 0.55f;
+        col.m_halfHeight = 0.5f;
+        configureStaticObstacle( col );
+
+        // TODO: make spritesheet animation a built-in component, so we don't have to write a script for every one.
+        const Tomos::TVkImage* tex = resources().loadImage( *app.gpu(), kSheet, Tomos::TTexAddr::Clamp, /*p_required=*/false );
+        if ( tex == nullptr ) tex = &app.gpu()->defaultTexture();
+
+        auto& sprite                 = fire.emplaceComponent<Tomos::TSpriteComponent>( tex );
+        sprite.m_animRef.m_path      = kSheet;
+        sprite.m_size                = { 1.4f, 1.4f };
+        sprite.m_pivot               = { 0.5f, 0.0f };
+        sprite.m_uvMax               = { 1.0f / static_cast<float>( kSheetFrames ), 1.0f };
+        sprite.m_mode                = Tomos::TBillboardMode::Cylindrical;
+        sprite.m_alphaMode           = Tomos::TSpriteAlphaMode::Cutout;
+        sprite.m_shadowMode          = Tomos::TSpriteShadowMode::Contact;
+        sprite.m_shadowContactRadius = 0.35f;
+        sprite.m_emissive            = 1.0f;  // flames are their own light source
+
+        Tomos::TSceneNode& lightNode = createNode( "CampfireLight" );
+        fire.addChild( &lightNode );
+        lightNode.m_transform.setTranslation( { 0.0f, 0.6f, 0.0f } );
+        auto& light        = lightNode.emplaceComponent<Tomos::TLightComponent>();
+        light.m_type       = Tomos::TLightType::Point;
+        light.m_color      = { 1.0f, 0.6f, 0.25f };
+        light.m_intensity  = 6.0f;
+        light.m_maxRange   = 8.0f;
+        light.m_castShadow = false;
+
+        Tomos::TSceneNode& embersNode = createNode( "CampfireEmbers" );
+        fire.addChild( &embersNode );
+        embersNode.m_transform.setTranslation( { 0.0f, 0.55f, 0.0f } );
+        auto& embers         = embersNode.emplaceComponent<Tomos::TParticleEmitterComponent>();
+        embers.m_rate        = 14.0f;
+        embers.m_lifetimeMin = 0.7f;
+        embers.m_lifetimeMax = 1.6f;
+        embers.m_velocityMin = { -0.35f, 0.9f, -0.35f };
+        embers.m_velocityMax = { 0.35f, 2.0f, 0.35f };
+        embers.m_sizeStart   = { 0.07f, 0.07f };
+        embers.m_sizeEnd     = { 0.015f, 0.015f };
+        embers.m_colorStart  = { 1.0f, 0.65f, 0.2f, 1.0f };
+        embers.m_colorEnd    = { 1.0f, 0.15f, 0.0f, 0.0f };
+        embers.m_gravity     = -0.5f;
+        embers.m_seed        = 1;
+
+        Tomos::TSceneNode& glowNode = createNode( "CampfireGlow" );
+        fire.addChild( &glowNode );
+        glowNode.m_transform.setTranslation( { 0.0f, 0.35f, 0.0f } );
+        auto& glow         = glowNode.emplaceComponent<Tomos::TParticleEmitterComponent>();
+        glow.m_rate        = 24.0f;
+        glow.m_lifetimeMin = 0.25f;
+        glow.m_lifetimeMax = 0.5f;
+        glow.m_velocityMin = { -0.15f, 0.6f, -0.15f };
+        glow.m_velocityMax = { 0.15f, 1.4f, 0.15f };
+        glow.m_sizeStart   = { 0.8f, 0.8f };
+        glow.m_sizeEnd     = { 0.12f, 0.12f };
+        glow.m_colorStart  = { 1.0f, 0.55f, 0.15f, 0.35f };
+        glow.m_colorEnd    = { 1.0f, 0.25f, 0.05f, 0.0f };
+        glow.m_gravity     = 0.0f;
+        glow.m_seed        = 2;
+
+        auto script          = std::make_unique<CampfireScript>();
+        script->m_frameCount = kSheetFrames;
+        fire.addComponent( std::make_unique<Tomos::TScriptComponent>( std::move( script ) ) );
     }
 
     void InGameScene::spawnMobs()

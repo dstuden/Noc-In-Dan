@@ -14,7 +14,7 @@ namespace NocInDan
         cfg.m_biomes = {
                 { .m_id               = BiomeId::Plains,
                   .m_regionWeight     = 1.0f,
-                  .m_allowPlayerSpawn = true,
+                  .m_allowPlayerSpawn = false,
                   .m_spawns =
                           {
                                   { .m_prefabId    = "grass",
@@ -32,12 +32,12 @@ namespace NocInDan
                   .m_spawns =
                           {
                                   { .m_prefabId    = "grass",
-                                    .m_density     = 0.4f,
+                                    .m_density     = 0.25f,
                                     .m_clumpFreq   = 0.30f,
                                     .m_clumpCutoff = 0.50f,
                                     .m_minSpacing  = WorldUnits{ 1.5f } },
 
-                                  { .m_prefabId = "tree", .m_density = 2.5f, .m_clumpFreq = 0.15f, .m_clumpCutoff = 0.35f, .m_minSpacing = WorldUnits{ 2.5f } },
+                                  { .m_prefabId = "tree", .m_density = 1.3f, .m_clumpFreq = 0.15f, .m_clumpCutoff = 0.45f, .m_minSpacing = WorldUnits{ 3.5f } },
                           },
                   .m_groundMix = { { GroundTileId::Forest, 0.75f }, { GroundTileId::Grass, 0.25f } } },
                 { .m_id               = BiomeId::Swamp,
